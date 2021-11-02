@@ -1105,6 +1105,38 @@ func (p *Plex) RemoveLabelFromMedia(mediaType, sectionID, id, label, locked stri
 	return resp.StatusCode == 200, nil
 }
 
+func (p *Plex) GetCollection(collectionKey string) (SearchResults, error) {
+	query := fmt.Sprintf("%s/library/collections/%s/children", p.URL, collectionKey)
+
+	resp, err := p.get(query, p.Headers)
+
+	if err != nil {
+		return SearchResults{}, err
+	}
+
+	if resp.Status == ErrorInvalidToken {
+		return SearchResults{}, errors.New("invalid token")
+	}
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return SearchResults{}, errors.New("You are not authorized to access that server")
+	}
+
+	if resp.StatusCode == http.StatusBadRequest {
+		return SearchResults{}, errors.New("There was an error in the request")
+	}
+
+	defer resp.Body.Close()
+
+	var results SearchResults
+
+	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
+		return SearchResults{}, err
+	}
+
+	return results, nil
+}
+
 // GetSessions of devices currently consuming media
 func (p *Plex) GetSessions() (CurrentSessions, error) {
 	newHeaders := p.Headers
